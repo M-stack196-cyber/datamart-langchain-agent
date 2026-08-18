@@ -31,8 +31,11 @@ frontend/dist/
 # Logs
 *.log
 
+# Test authentication cookies
+*cookies*.txt
+
 # IDE / OS
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db*cookies*.txt
+Thumbs.db
