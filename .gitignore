@@ -35,4 +35,4 @@ frontend/dist/
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
+Thumbs.db*cookies*.txt

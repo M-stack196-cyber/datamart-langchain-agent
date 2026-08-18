@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db.session import init_db
+from app.routes.admin_auth import router as admin_auth_router
 from app.routes.admin_data import router as admin_data_router
 from app.routes.chat import router as chat_router
 from app.routes.knowledge import router as knowledge_router
@@ -21,9 +22,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Datamart LangChain Agent API",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,8 +35,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 app.include_router(chat_router)
 app.include_router(knowledge_router)
+app.include_router(admin_auth_router)
 app.include_router(admin_data_router)
 
 
@@ -50,4 +54,6 @@ def root():
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+    }

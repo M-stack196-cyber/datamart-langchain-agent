@@ -7,12 +7,18 @@ import {
   LoaderCircle,
   Database,
   Workflow,
+  LockKeyhole,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import AdminDashboard from "./AdminDashboard";
+import AdminLogin from "./AdminLogin";
+
+
 const API_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 
 const QUICK_PROMPTS = [
   "What AI services does Datamart provide?",
@@ -21,10 +27,17 @@ const QUICK_PROMPTS = [
   "Connect me with a human",
 ];
 
-export default function App() {
+
+function ChatApp() {
   const [conversationId, setConversationId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [adminAuthenticated, setAdminAuthenticated] =
+    useState(false);
+
+  const [checkingAdminSession, setCheckingAdminSession] =
+    useState(true);
 
   const [messages, setMessages] = useState([
     {
@@ -36,11 +49,50 @@ export default function App() {
 
   const messagesEndRef = useRef(null);
 
+
+  // Check whether admin is already logged in.
   useEffect(() => {
+    checkAdminSession();
+  }, []);
+
+
+  // Prevent the page from jumping to the bottom on first load.
+  // Auto-scroll only after the conversation actually starts.
+  useEffect(() => {
+    if (messages.length === 1 && !loading) {
+      return;
+    }
+
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
+      block: "nearest",
     });
   }, [messages, loading]);
+
+
+  async function checkAdminSession() {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/session`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      setAdminAuthenticated(response.ok);
+    } catch (error) {
+      console.error(
+        "Unable to check admin session:",
+        error
+      );
+
+      setAdminAuthenticated(false);
+    } finally {
+      setCheckingAdminSession(false);
+    }
+  }
+
 
   async function sendMessage(textOverride = null) {
     const text =
@@ -48,7 +100,9 @@ export default function App() {
         ? textOverride.trim()
         : input.trim();
 
-    if (!text || loading) return;
+    if (!text || loading) {
+      return;
+    }
 
     setMessages((current) => [
       ...current,
@@ -62,16 +116,19 @@ export default function App() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: text,
-          conversation_id: conversationId,
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/api/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: text,
+            conversation_id: conversationId,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -105,10 +162,22 @@ export default function App() {
     }
   }
 
+
   function handleSubmit(event) {
     event.preventDefault();
     sendMessage();
   }
+
+
+  function openAdminPortal() {
+    if (adminAuthenticated) {
+      window.location.href = "/admin";
+      return;
+    }
+
+    window.location.href = "/admin/login";
+  }
+
 
   return (
     <main className="page">
@@ -138,9 +207,36 @@ export default function App() {
             </div>
           </div>
 
-          <div className="agent-badge">
-            <Sparkles size={15} />
-            Agentic AI
+          <div className="header-actions">
+            <div className="agent-badge">
+              <Sparkles size={15} />
+              Agentic AI
+            </div>
+
+            <button
+              type="button"
+              className="admin-entry-button"
+              onClick={openAdminPortal}
+              disabled={checkingAdminSession}
+            >
+              {checkingAdminSession ? (
+                <>
+                  <LoaderCircle
+                    className="spinner"
+                    size={15}
+                  />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <LockKeyhole size={15} />
+
+                  {adminAuthenticated
+                    ? "Admin Dashboard"
+                    : "Admin Login"}
+                </>
+              )}
+            </button>
           </div>
         </header>
 
@@ -268,4 +364,22 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+
+export default function App() {
+  const path = window.location.pathname;
+
+  if (path === "/admin/login") {
+    return <AdminLogin />;
+  }
+
+  if (
+    path === "/admin" ||
+    path.startsWith("/admin/")
+  ) {
+    return <AdminDashboard />;
+  }
+
+  return <ChatApp />;
 }

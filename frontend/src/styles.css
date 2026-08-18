@@ -676,3 +676,46 @@ button {
     max-width: 91%;
   }
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-entry-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-entry-button:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.38);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 700px) {
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-entry-button {
+    padding: 0 10px;
+  }
+}

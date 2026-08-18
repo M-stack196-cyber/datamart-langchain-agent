@@ -1,16 +1,28 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.auth import require_admin
 from app.db.models import HandoffRequest, Lead, MeetingRequest
 from app.db.session import get_db
 
 
-router = APIRouter(prefix="/api", tags=["data"])
+router = APIRouter(
+    prefix="/api",
+    tags=["admin-data"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 @router.get("/leads")
-def list_leads(db: Session = Depends(get_db)):
-    rows = db.query(Lead).order_by(Lead.id.desc()).all()
+def list_leads(
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(Lead)
+        .order_by(Lead.id.desc())
+        .all()
+    )
+
     return [
         {
             "id": row.id,
@@ -29,8 +41,15 @@ def list_leads(db: Session = Depends(get_db)):
 
 
 @router.get("/meetings")
-def list_meetings(db: Session = Depends(get_db)):
-    rows = db.query(MeetingRequest).order_by(MeetingRequest.id.desc()).all()
+def list_meetings(
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(MeetingRequest)
+        .order_by(MeetingRequest.id.desc())
+        .all()
+    )
+
     return [
         {
             "id": row.id,
@@ -48,8 +67,15 @@ def list_meetings(db: Session = Depends(get_db)):
 
 
 @router.get("/handoffs")
-def list_handoffs(db: Session = Depends(get_db)):
-    rows = db.query(HandoffRequest).order_by(HandoffRequest.id.desc()).all()
+def list_handoffs(
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(HandoffRequest)
+        .order_by(HandoffRequest.id.desc())
+        .all()
+    )
+
     return [
         {
             "id": row.id,

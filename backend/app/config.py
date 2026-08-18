@@ -14,17 +14,29 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # LLM
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
 
+    # Embeddings / RAG
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
+    # Database
     database_url: str = f"sqlite:///{BASE_DIR / 'datamart_agent.db'}"
 
+    # Chroma
     chroma_persist_dir: str = str(BASE_DIR / "chroma_db")
     chroma_collection: str = "datamart_knowledge"
 
+    # Frontend / CORS
     cors_origins: str = "http://localhost:5173"
+
+    # Admin authentication
+    admin_username: str = "admin"
+    admin_password_hash: str = ""
+    admin_session_secret: str = ""
+    admin_session_hours: int = 8
+    admin_cookie_secure: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:
