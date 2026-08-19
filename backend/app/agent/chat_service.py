@@ -3,39 +3,12 @@ from uuid import uuid4
 from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.orm import Session
 
-from app.agent.service import build_datamart_agent
 from app.config import get_settings
 from app.db.models import ConversationMessage
+from app.graph import build_chat_graph
 
 
 MAX_HISTORY_MESSAGES = 20
-
-
-def _extract_text(message) -> str:
-    content = getattr(message, "content", "")
-
-    if isinstance(content, str):
-        return content
-
-    if isinstance(content, list):
-        text_parts: list[str] = []
-
-        for block in content:
-            if isinstance(block, str):
-                text_parts.append(block)
-
-            elif isinstance(block, dict) and block.get("type") in {
-                "text",
-                "output_text",
-            }:
-                text = block.get("text") or block.get("content")
-
-                if text:
-                    text_parts.append(str(text))
-
-        return "\n".join(text_parts).strip()
-
-    return str(content)
 
 
 def process_chat(
@@ -69,12 +42,10 @@ def process_chat(
     lc_messages = []
 
     for row in history_rows:
-
         if row.role == "user":
             lc_messages.append(
                 HumanMessage(content=row.content)
             )
-
         elif row.role == "assistant":
             lc_messages.append(
                 AIMessage(content=row.content)
@@ -87,28 +58,24 @@ def process_chat(
             content=message,
         )
     )
-
     db.commit()
 
-    lc_messages.append(
-        HumanMessage(content=message)
-    )
+    lc_messages.append(HumanMessage(content=message))
 
-    agent = build_datamart_agent(
+    graph = build_chat_graph(
         db=db,
         conversation_id=conversation_id,
     )
 
-    result = agent.invoke(
+    result = graph.invoke(
         {
-            "messages": lc_messages
+            "messages": lc_messages,
+            "conversation_id": conversation_id,
         }
     )
 
-    final_message = result["messages"][-1]
-
     response_text = (
-        _extract_text(final_message)
+        result.get("response")
         or "I couldn't generate a response. Please try again."
     )
 
@@ -119,7 +86,6 @@ def process_chat(
             content=response_text,
         )
     )
-
     db.commit()
 
     return response_text, conversation_id
