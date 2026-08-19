@@ -11,9 +11,9 @@ from app.graph.state import ChatState, Intent
 
 HANDOFF_RE = re.compile(
     r"\b("
-    r"human|person|representative|agent|employee|staff|"
+    r"human|person|representative|employee|staff|"
     r"talk to someone|speak to someone|live agent|"
-    r"connect me|handoff"
+    r"connect me|human agent|handoff"
     r")\b",
     re.IGNORECASE,
 )
@@ -51,9 +51,10 @@ def _latest_user_text(state: ChatState) -> str:
 def make_classify_intent_node(db: Session, conversation_id: str):
     def classify_intent(state: ChatState) -> dict:
         """
-        Explicit meeting/handoff requests can override a lead flow.
-        Otherwise an unfinished lead flow remains sticky across turns, so a reply
-        like "John Smith" does not accidentally get routed to knowledge/RAG.
+        Explicit handoff/meeting intent is handled first.
+
+        Then unfinished lead/meeting flows stay sticky so short replies such as a
+        name, timezone or slot number continue through the correct subgraph.
         """
         text = _latest_user_text(state)
 
@@ -69,8 +70,8 @@ def make_classify_intent_node(db: Session, conversation_id: str):
             .first()
         )
 
-        if flow_state and flow_state.active_flow == "lead":
-            return {"intent": "lead"}
+        if flow_state and flow_state.active_flow in {"lead", "meeting"}:
+            return {"intent": flow_state.active_flow}
 
         if LEAD_RE.search(text):
             return {"intent": "lead"}

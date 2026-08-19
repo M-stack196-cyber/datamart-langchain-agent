@@ -69,9 +69,6 @@ class HandoffRequest(Base):
 class ConversationFlowState(Base):
     """
     Durable workflow state for LangGraph business flows.
-
-    This is deliberately separate from the chat transcript. The transcript stores
-    what was said; this table stores what the workflow is currently waiting for.
     """
 
     __tablename__ = "conversation_flow_states"
@@ -88,3 +85,47 @@ class ConversationFlowState(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class MeetingFlowState(Base):
+    """
+    Meeting-only transient state.
+
+    A separate table avoids altering existing production columns and gives us a
+    durable place to keep the exact slot list presented to the visitor.
+    """
+
+    __tablename__ = "meeting_flow_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True
+    )
+    purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
+    slots_json: Mapped[str] = mapped_column(Text, default="[]")
+    selected_start_utc: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    selected_end_utc: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    selected_display: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class MeetingBooking(Base):
+    """
+    Google Calendar booking result. New table = no destructive SQLite migration.
+    """
+
+    __tablename__ = "meeting_bookings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(64), index=True)
+    meeting_request_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    google_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    google_meet_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    html_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_utc: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    end_utc: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="booked")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

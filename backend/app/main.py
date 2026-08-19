@@ -8,6 +8,7 @@ from app.db.session import init_db
 from app.routes.admin_auth import router as admin_auth_router
 from app.routes.admin_data import router as admin_data_router
 from app.routes.chat import router as chat_router
+from app.routes.google_calendar import router as google_calendar_router
 from app.routes.knowledge import router as knowledge_router
 
 
@@ -22,7 +23,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Datamart LangChain Agent API",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -40,6 +41,7 @@ app.include_router(chat_router)
 app.include_router(knowledge_router)
 app.include_router(admin_auth_router)
 app.include_router(admin_data_router)
+app.include_router(google_calendar_router)
 
 
 @app.get("/")
@@ -47,7 +49,7 @@ def root():
     return {
         "name": "Datamart LangChain Agent API",
         "status": "running",
-        "framework": "LangChain",
+        "framework": "LangChain + LangGraph",
         "n8n": False,
     }
 
