@@ -1,0 +1,375 @@
+.floating-chat-root {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.floating-chat-launcher {
+  min-height: 58px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #101218;
+  color: white;
+  box-shadow: 0 18px 45px rgba(16, 18, 24, 0.25);
+  cursor: pointer;
+  font-weight: 750;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.floating-chat-launcher:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 55px rgba(16, 18, 24, 0.32);
+}
+
+.floating-chat-panel {
+  width: min(400px, calc(100vw - 32px));
+  height: min(650px, calc(100vh - 48px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(15, 18, 25, 0.12);
+  border-radius: 22px;
+  background: white;
+  box-shadow: 0 28px 80px rgba(15, 18, 25, 0.26);
+}
+
+.floating-chat-topbar {
+  min-height: 68px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex: 0 0 auto;
+  background: #101218;
+  color: white;
+}
+
+.floating-chat-topbar > div {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.floating-chat-topbar > div > div {
+  display: grid;
+  gap: 2px;
+}
+
+.floating-chat-topbar strong {
+  font-size: 15px;
+}
+
+.floating-chat-topbar span {
+  font-size: 11px;
+  color: #b9bdc7;
+}
+
+.floating-chat-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(108, 99, 255, 0.2);
+  color: #b0abff !important;
+}
+
+.floating-chat-close {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  cursor: pointer;
+}
+
+.floating-chat-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.floating-chat-content {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: #f7f8fa;
+}
+
+
+/* Convert existing full-page chatbot into widget */
+
+.floating-chat-content .page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  display: block;
+  background: transparent;
+  overflow: hidden;
+}
+
+.floating-chat-content .background-orb {
+  display: none;
+}
+
+.floating-chat-content .chat-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+
+/* Hide duplicated full-page chatbot header */
+
+.floating-chat-content .header {
+  display: none;
+}
+
+
+/* Capability strip */
+
+.floating-chat-content .capability-strip {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid #eceef2;
+  background: #fafbfc;
+}
+
+.floating-chat-content .capability-strip span {
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+
+/* Messages */
+
+.floating-chat-content .messages {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 13px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.floating-chat-content .message-row {
+  margin-bottom: 13px;
+  gap: 7px;
+}
+
+.floating-chat-content .avatar {
+  width: 29px;
+  height: 29px;
+  min-width: 29px;
+}
+
+.floating-chat-content .message {
+  max-width: calc(100% - 42px);
+  padding: 10px 12px;
+  border-radius: 13px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.floating-chat-content .message p {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.floating-chat-content .message p:last-child {
+  margin-bottom: 0;
+}
+
+.floating-chat-content .message table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 11px;
+}
+
+.floating-chat-content .message th,
+.floating-chat-content .message td {
+  padding: 5px;
+}
+
+
+/* Quick prompts */
+
+.floating-chat-content .quick-prompts {
+  flex: 0 0 auto;
+  padding: 0 13px 12px;
+}
+
+.floating-chat-content .quick-prompts > p {
+  margin: 0 0 7px;
+  font-size: 10px;
+}
+
+.floating-chat-content .prompt-grid {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.floating-chat-content .prompt-grid button {
+  flex: 0 0 auto;
+  max-width: 210px;
+  padding: 7px 9px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+
+/* Composer */
+
+.floating-chat-content .composer-section {
+  flex: 0 0 auto;
+  padding: 10px 12px 11px;
+  border-top: 1px solid #eceef2;
+  background: white;
+}
+
+.floating-chat-content .composer {
+  min-height: 45px;
+}
+
+.floating-chat-content .composer input {
+  font-size: 13px;
+}
+
+.floating-chat-content .composer button {
+  width: 38px;
+  height: 38px;
+}
+
+.floating-chat-content .disclaimer {
+  margin: 7px 2px 0;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  .floating-chat-root {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .floating-chat-launcher {
+    min-height: 54px;
+    padding: 0 17px;
+  }
+
+  .floating-chat-panel {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+    max-height: none;
+    border-radius: 18px;
+  }
+}
+
+/* User-resizable desktop chatbot */
+@media (min-width: 601px) {
+  .floating-chat-panel {
+    width: 400px;
+    height: 650px;
+
+    min-width: 320px;
+    min-height: 420px;
+
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 48px);
+
+    resize: both;
+    overflow: hidden;
+  }
+}
+
+/* Keep mobile simple and non-resizable */
+@media (max-width: 600px) {
+  .floating-chat-panel {
+    resize: none;
+  }
+}
+
+/* Custom top-left chatbot resizing */
+.floating-chat-panel {
+  position: relative;
+  resize: none !important;
+}
+
+.floating-chat-resize-handle {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 20;
+
+  width: 28px;
+  height: 28px;
+
+  display: grid;
+  place-items: center;
+
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.floating-chat-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.floating-chat-resize-handle:active {
+  background: rgba(108, 99, 255, 0.35);
+}
+
+.floating-chat-resizing,
+.floating-chat-resizing * {
+  cursor: nwse-resize !important;
+  user-select: none !important;
+}
+
+@media (max-width: 600px) {
+  .floating-chat-resize-handle {
+    display: none;
+  }
+}
