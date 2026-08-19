@@ -1,0 +1,166 @@
+.live-grid {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  min-height: 520px;
+}
+
+.live-sidebar {
+  padding: 18px;
+  border-right: 1px solid #e6ebf2;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+.live-sidebar h3 {
+  margin: 4px 0 12px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.live-muted {
+  margin: 0 0 18px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.live-card {
+  margin-bottom: 12px;
+  padding: 13px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: white;
+}
+
+.live-card strong,
+.live-card span {
+  display: block;
+}
+
+.live-card span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.live-card p {
+  margin: 9px 0;
+  color: #475569;
+  font-size: 12px;
+}
+
+.live-card button,
+.live-active-button,
+.live-composer button {
+  border: 0;
+  border-radius: 9px;
+  background: #3156b5;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.live-card button {
+  padding: 8px 10px;
+}
+
+.live-active-button {
+  width: 100%;
+  margin-bottom: 7px;
+  padding: 9px 10px;
+  text-align: left;
+  background: #e8eefc;
+  color: #3156b5;
+}
+
+.live-active-button.selected {
+  background: #3156b5;
+  color: white;
+}
+
+.live-workspace {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.live-messages {
+  height: 455px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.live-message {
+  width: fit-content;
+  max-width: 78%;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 13px;
+}
+
+.live-message.user {
+  margin-left: auto;
+  background: #edf2ff;
+}
+
+.live-message.agent {
+  background: #e9f7ef;
+}
+
+.live-message.system {
+  margin-right: auto;
+  margin-left: auto;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.live-message small {
+  display: block;
+  margin-bottom: 4px;
+  color: #94a3b8;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.live-composer {
+  display: flex;
+  gap: 8px;
+  padding: 13px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.live-composer input {
+  min-width: 0;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  outline: none;
+}
+
+.live-composer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 13px;
+}
+
+.live-composer .live-end {
+  background: #dc2626;
+}
+
+@media (max-width: 800px) {
+  .live-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .live-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #e6ebf2;
+  }
+}

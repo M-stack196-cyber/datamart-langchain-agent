@@ -4,7 +4,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.db.models import ConversationMessage
+from app.db.models import ConversationMessage, HandoffSession
 from app.graph import build_chat_graph
 
 
@@ -26,6 +26,40 @@ def process_chat(
 
     conversation_id = conversation_id or str(uuid4())
 
+    # Human mode bypasses the AI entirely. The user message is persisted, while
+    # the admin receives it through the live-chat endpoints.
+    handoff = (
+        db.query(HandoffSession)
+        .filter(HandoffSession.conversation_id == conversation_id)
+        .first()
+    )
+
+    # After a human chat ends, the visitor's next message returns control
+    # to the LangGraph AI assistant.
+    if handoff and handoff.mode == "closed":
+        handoff.mode = "bot"
+        handoff.assigned_to = None
+        db.commit()
+
+    if handoff and handoff.mode in {"pending_human", "human"}:
+        db.add(
+            ConversationMessage(
+                conversation_id=conversation_id,
+                role="user",
+                content=message,
+            )
+        )
+        db.commit()
+
+        if handoff.mode == "human":
+            return "", conversation_id
+
+        return (
+            "Your message has been added to the live-chat queue. "
+            "A Datamart team member will see it when they join.",
+            conversation_id,
+        )
+
     history_rows = (
         db.query(ConversationMessage)
         .filter(
@@ -46,7 +80,7 @@ def process_chat(
             lc_messages.append(
                 HumanMessage(content=row.content)
             )
-        elif row.role == "assistant":
+        elif row.role in {"assistant", "agent", "system"}:
             lc_messages.append(
                 AIMessage(content=row.content)
             )

@@ -7,7 +7,8 @@ import {
   LoaderCircle,
   Database,
   Workflow,
-  LockKeyhole,
+  Headphones,
+  Plus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -19,6 +20,13 @@ import AdminLogin from "./AdminLogin";
 const API_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+const STORAGE_KEY = "datamartConversationId";
+
+const WELCOME_MESSAGE = {
+  role: "assistant",
+  content:
+    "Hi! I'm **Datamart's AI Assistant**. I can answer questions about Datamart, help with project enquiries, schedule meeting requests, or connect you with the team.",
+};
 
 const QUICK_PROMPTS = [
   "What AI services does Datamart provide?",
@@ -32,32 +40,75 @@ function ChatApp() {
   const [conversationId, setConversationId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(true);
+  const [liveMode, setLiveMode] = useState("bot");
+  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
 
-  const [adminAuthenticated, setAdminAuthenticated] =
-    useState(false);
-
-  const [checkingAdminSession, setCheckingAdminSession] =
-    useState(true);
-
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm **Datamart's AI Assistant**. I can answer questions about Datamart, help with project enquiries, schedule meeting requests, or connect you with the team.",
-    },
-  ]);
-
+  const lastLiveMessageId = useRef(0);
   const messagesEndRef = useRef(null);
 
 
-  // Check whether admin is already logged in.
+  // Restore the same visitor conversation after refresh/navigation, matching
+  // the public visitor behavior from the previous Datamart chatbot.
   useEffect(() => {
-    checkAdminSession();
+    restoreSavedConversation();
   }, []);
 
 
-  // Prevent the page from jumping to the bottom on first load.
-  // Auto-scroll only after the conversation actually starts.
+  // Poll status + new employee/system messages while a conversation exists.
+  useEffect(() => {
+    if (!conversationId) return;
+
+    let cancelled = false;
+
+    async function pollLiveChat() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/chat/${conversationId}/live?after_id=${lastLiveMessageId.current}`
+        );
+
+        if (!response.ok || cancelled) return;
+
+        const data = await response.json();
+
+        setLiveMode(data.mode || "bot");
+
+        if (Number.isInteger(data.last_message_id)) {
+          lastLiveMessageId.current = Math.max(
+            lastLiveMessageId.current,
+            data.last_message_id
+          );
+        }
+
+        const incoming = data.messages || [];
+
+        if (incoming.length) {
+          setMessages((current) => [
+            ...current,
+            ...incoming.map((message) => ({
+              role: "assistant",
+              sourceRole: message.role,
+              serverId: message.id,
+              content: message.content,
+              live: true,
+            })),
+          ]);
+        }
+      } catch (error) {
+        console.error("Live chat poll failed:", error);
+      }
+    }
+
+    pollLiveChat();
+    const interval = setInterval(pollLiveChat, 2500);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [conversationId]);
+
+
   useEffect(() => {
     if (messages.length === 1 && !loading) {
       return;
@@ -70,27 +121,93 @@ function ChatApp() {
   }, [messages, loading]);
 
 
-  async function checkAdminSession() {
+  async function restoreSavedConversation() {
+    const savedId = localStorage.getItem(STORAGE_KEY);
+
+    if (!savedId) {
+      setRestoring(false);
+      return;
+    }
+
     try {
       const response = await fetch(
-        `${API_URL}/api/admin/session`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
+        `${API_URL}/api/chat/${savedId}/history`
       );
 
-      setAdminAuthenticated(response.ok);
+      if (!response.ok) {
+        throw new Error("Unable to restore conversation.");
+      }
+
+      const data = await response.json();
+      const history = data.messages || [];
+
+      if (!history.length) {
+        localStorage.removeItem(STORAGE_KEY);
+        setRestoring(false);
+        return;
+      }
+
+      const restored = history.map((message) => ({
+        role:
+          message.role === "user"
+            ? "user"
+            : "assistant",
+        sourceRole: message.role,
+        serverId: message.id,
+        content: message.content,
+        live:
+          message.role === "agent" ||
+          message.role === "system",
+      }));
+
+      const maxId = history.reduce(
+        (max, message) =>
+          Number.isInteger(message.id)
+            ? Math.max(max, message.id)
+            : max,
+        0
+      );
+
+      lastLiveMessageId.current = maxId;
+      setMessages(restored);
+      setConversationId(savedId);
+
+      const statusResponse = await fetch(
+        `${API_URL}/api/chat/${savedId}/live?after_id=${maxId}`
+      );
+
+      if (statusResponse.ok) {
+        const status = await statusResponse.json();
+        setLiveMode(status.mode || "bot");
+      }
     } catch (error) {
-      console.error(
-        "Unable to check admin session:",
-        error
+      console.error("Conversation restore failed:", error);
+      localStorage.removeItem(STORAGE_KEY);
+      setConversationId(null);
+      setMessages([WELCOME_MESSAGE]);
+      setLiveMode("bot");
+      lastLiveMessageId.current = 0;
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+
+  function startNewConversation() {
+    if (conversationId) {
+      const confirmed = window.confirm(
+        "Start a new conversation? Your previous chat will remain saved in the database."
       );
 
-      setAdminAuthenticated(false);
-    } finally {
-      setCheckingAdminSession(false);
+      if (!confirmed) return;
     }
+
+    localStorage.removeItem(STORAGE_KEY);
+    setConversationId(null);
+    setLiveMode("bot");
+    setMessages([WELCOME_MESSAGE]);
+    setInput("");
+    lastLiveMessageId.current = 0;
   }
 
 
@@ -100,8 +217,19 @@ function ChatApp() {
         ? textOverride.trim()
         : input.trim();
 
-    if (!text || loading) {
+    if (!text || loading || restoring) {
       return;
+    }
+
+    let activeConversationId = conversationId;
+
+    if (!activeConversationId) {
+      activeConversationId = crypto.randomUUID();
+      localStorage.setItem(
+        STORAGE_KEY,
+        activeConversationId
+      );
+      setConversationId(activeConversationId);
     }
 
     setMessages((current) => [
@@ -125,7 +253,7 @@ function ChatApp() {
           },
           body: JSON.stringify({
             message: text,
-            conversation_id: conversationId,
+            conversation_id: activeConversationId,
           }),
         }
       );
@@ -138,15 +266,23 @@ function ChatApp() {
         );
       }
 
-      setConversationId(data.conversation_id);
+      const returnedId =
+        data.conversation_id || activeConversationId;
 
-      setMessages((current) => [
-        ...current,
-        {
-          role: "assistant",
-          content: data.response,
-        },
-      ]);
+      setConversationId(returnedId);
+      localStorage.setItem(STORAGE_KEY, returnedId);
+
+      // Human mode intentionally returns an empty response: the employee reply
+      // arrives through live polling instead of the AI.
+      if (data.response) {
+        setMessages((current) => [
+          ...current,
+          {
+            role: "assistant",
+            content: data.response,
+          },
+        ]);
+      }
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -169,13 +305,29 @@ function ChatApp() {
   }
 
 
-  function openAdminPortal() {
-    if (adminAuthenticated) {
-      window.location.href = "/admin";
-      return;
-    }
+  const humanConnected = liveMode === "human";
+  const humanWaiting = liveMode === "pending_human";
+  const chatClosed = liveMode === "closed";
 
-    window.location.href = "/admin/login";
+
+  if (restoring) {
+    return (
+      <main className="page">
+        <section className="chat-shell">
+          <div className="messages">
+            <div className="message-row assistant">
+              <div className="avatar assistant">
+                <Bot size={17} />
+              </div>
+              <div className="message assistant thinking">
+                <LoaderCircle className="spinner" size={17} />
+                Restoring your conversation...
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
   }
 
 
@@ -197,7 +349,13 @@ function ChatApp() {
 
                 <span className="status">
                   <span className="status-dot" />
-                  Online
+                  {humanConnected
+                    ? "Human connected"
+                    : humanWaiting
+                    ? "Waiting for team"
+                    : chatClosed
+                    ? "Chat ended"
+                    : "Online"}
                 </span>
               </div>
 
@@ -209,33 +367,21 @@ function ChatApp() {
 
           <div className="header-actions">
             <div className="agent-badge">
-              <Sparkles size={15} />
-              Agentic AI
+              {humanConnected ? (
+                <Headphones size={15} />
+              ) : (
+                <Sparkles size={15} />
+              )}
+              {humanConnected ? "Live Support" : "Agentic AI"}
             </div>
 
             <button
               type="button"
               className="admin-entry-button"
-              onClick={openAdminPortal}
-              disabled={checkingAdminSession}
+              onClick={startNewConversation}
             >
-              {checkingAdminSession ? (
-                <>
-                  <LoaderCircle
-                    className="spinner"
-                    size={15}
-                  />
-                  Checking...
-                </>
-              ) : (
-                <>
-                  <LockKeyhole size={15} />
-
-                  {adminAuthenticated
-                    ? "Admin Dashboard"
-                    : "Admin Login"}
-                </>
-              )}
+              <Plus size={15} />
+              New Conversation
             </button>
           </div>
         </header>
@@ -260,12 +406,20 @@ function ChatApp() {
         <div className="messages">
           {messages.map((message, index) => (
             <div
-              key={`${message.role}-${index}`}
+              key={
+                message.serverId
+                  ? `server-${message.serverId}`
+                  : `${message.role}-${index}`
+              }
               className={`message-row ${message.role}`}
             >
               <div className={`avatar ${message.role}`}>
                 {message.role === "assistant" ? (
-                  <Bot size={17} />
+                  message.live ? (
+                    <Headphones size={17} />
+                  ) : (
+                    <Bot size={17} />
+                  )
                 ) : (
                   <UserRound size={17} />
                 )}
@@ -287,7 +441,7 @@ function ChatApp() {
             </div>
           ))}
 
-          {loading && (
+          {loading && !humanConnected && (
             <div className="message-row assistant">
               <div className="avatar assistant">
                 <Bot size={17} />
@@ -298,7 +452,9 @@ function ChatApp() {
                   className="spinner"
                   size={17}
                 />
-                Datamart AI is thinking...
+                {humanWaiting
+                  ? "Sending your message..."
+                  : "Datamart AI is thinking..."}
               </div>
             </div>
           )}
@@ -335,7 +491,13 @@ function ChatApp() {
               onChange={(event) =>
                 setInput(event.target.value)
               }
-              placeholder="Ask Datamart anything..."
+              placeholder={
+                humanConnected
+                  ? "Message the Datamart team..."
+                  : humanWaiting
+                  ? "Send another message while you wait..."
+                  : "Ask Datamart anything..."
+              }
               disabled={loading}
               autoFocus
             />
@@ -357,8 +519,13 @@ function ChatApp() {
           </form>
 
           <p className="disclaimer">
-            AI responses are generated from Datamart's
-            knowledge base and available agent tools.
+            {humanConnected
+              ? "You are chatting with a Datamart team member. AI replies are paused."
+              : humanWaiting
+              ? "Your request is waiting in the live-support queue."
+              : chatClosed
+              ? "The live chat ended. You can continue with the AI or start a new conversation."
+              : "AI responses are generated from Datamart's knowledge base and available agent tools."}
           </p>
         </div>
       </section>

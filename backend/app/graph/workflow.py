@@ -4,6 +4,7 @@ from langgraph.graph import END, START, StateGraph
 from app.graph.nodes.branches import make_branch_node
 from app.graph.nodes.router import make_classify_intent_node, route_by_intent
 from app.graph.state import ChatState
+from app.graph.subgraphs.handoff import build_handoff_subgraph
 from app.graph.subgraphs.lead import build_lead_subgraph
 from app.graph.subgraphs.meeting import build_meeting_subgraph
 
@@ -14,7 +15,7 @@ def build_chat_graph(db: Session, conversation_id: str):
 
     START
       -> classify_intent
-      -> knowledge | lead(subgraph) | meeting(subgraph) | handoff
+      -> knowledge | lead | meeting | handoff
       -> END
     """
     builder = StateGraph(ChatState)
@@ -37,7 +38,7 @@ def build_chat_graph(db: Session, conversation_id: str):
     )
     builder.add_node(
         "handoff",
-        make_branch_node(db, conversation_id, "handoff"),
+        build_handoff_subgraph(db, conversation_id),
     )
 
     builder.add_edge(START, "classify_intent")

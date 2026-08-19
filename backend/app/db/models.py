@@ -67,16 +67,10 @@ class HandoffRequest(Base):
 
 
 class ConversationFlowState(Base):
-    """
-    Durable workflow state for LangGraph business flows.
-    """
-
     __tablename__ = "conversation_flow_states"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    conversation_id: Mapped[str] = mapped_column(
-        String(64), unique=True, index=True
-    )
+    conversation_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     active_flow: Mapped[str | None] = mapped_column(String(40), nullable=True)
     pending_field: Mapped[str | None] = mapped_column(String(80), nullable=True)
     skipped_fields: Mapped[str] = mapped_column(Text, default="")
@@ -88,19 +82,10 @@ class ConversationFlowState(Base):
 
 
 class MeetingFlowState(Base):
-    """
-    Meeting-only transient state.
-
-    A separate table avoids altering existing production columns and gives us a
-    durable place to keep the exact slot list presented to the visitor.
-    """
-
     __tablename__ = "meeting_flow_states"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    conversation_id: Mapped[str] = mapped_column(
-        String(64), unique=True, index=True
-    )
+    conversation_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
     slots_json: Mapped[str] = mapped_column(Text, default="[]")
     selected_start_utc: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -113,10 +98,6 @@ class MeetingFlowState(Base):
 
 
 class MeetingBooking(Base):
-    """
-    Google Calendar booking result. New table = no destructive SQLite migration.
-    """
-
     __tablename__ = "meeting_bookings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -129,3 +110,28 @@ class MeetingBooking(Base):
     end_utc: Mapped[str | None] = mapped_column(String(80), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="booked")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class HandoffSession(Base):
+    """
+    Durable human-handoff state. `assigned_to` stores the authenticated admin
+    username because the current repo has one admin credential rather than a
+    multi-user staff table.
+    """
+
+    __tablename__ = "handoff_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    visitor_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    visitor_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mode: Mapped[str] = mapped_column(String(40), default="collecting")
+    assigned_to: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

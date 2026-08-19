@@ -50,19 +50,7 @@ def _latest_user_text(state: ChatState) -> str:
 
 def make_classify_intent_node(db: Session, conversation_id: str):
     def classify_intent(state: ChatState) -> dict:
-        """
-        Explicit handoff/meeting intent is handled first.
-
-        Then unfinished lead/meeting flows stay sticky so short replies such as a
-        name, timezone or slot number continue through the correct subgraph.
-        """
         text = _latest_user_text(state)
-
-        if HANDOFF_RE.search(text):
-            return {"intent": "handoff"}
-
-        if MEETING_RE.search(text):
-            return {"intent": "meeting"}
 
         flow_state = (
             db.query(ConversationFlowState)
@@ -70,8 +58,15 @@ def make_classify_intent_node(db: Session, conversation_id: str):
             .first()
         )
 
-        if flow_state and flow_state.active_flow in {"lead", "meeting"}:
+        # Sticky business flow wins for short field answers.
+        if flow_state and flow_state.active_flow in {"lead", "meeting", "handoff"}:
             return {"intent": flow_state.active_flow}
+
+        if HANDOFF_RE.search(text):
+            return {"intent": "handoff"}
+
+        if MEETING_RE.search(text):
+            return {"intent": "meeting"}
 
         if LEAD_RE.search(text):
             return {"intent": "lead"}
