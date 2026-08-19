@@ -36,7 +36,9 @@ class Lead(Base):
     timeline: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="new")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class MeetingRequest(Base):
@@ -62,3 +64,27 @@ class HandoffRequest(Base):
     reason: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(40), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ConversationFlowState(Base):
+    """
+    Durable workflow state for LangGraph business flows.
+
+    This is deliberately separate from the chat transcript. The transcript stores
+    what was said; this table stores what the workflow is currently waiting for.
+    """
+
+    __tablename__ = "conversation_flow_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True
+    )
+    active_flow: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    pending_field: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    skipped_fields: Mapped[str] = mapped_column(Text, default="")
+    mode: Mapped[str] = mapped_column(String(40), default="bot")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

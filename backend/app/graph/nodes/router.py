@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.db.models import ConversationFlowState
 from app.graph.state import ChatState, Intent
 
 
@@ -47,53 +48,64 @@ def _latest_user_text(state: ChatState) -> str:
     return ""
 
 
-def classify_intent(state: ChatState) -> dict:
-    """
-    Fast deterministic routing first, then LLM classification for ambiguous input.
-    Keeping explicit routing in LangGraph makes the workflow inspectable and
-    prevents every request from becoming an uncontrolled tool-selection loop.
-    """
-    text = _latest_user_text(state)
+def make_classify_intent_node(db: Session, conversation_id: str):
+    def classify_intent(state: ChatState) -> dict:
+        """
+        Explicit meeting/handoff requests can override a lead flow.
+        Otherwise an unfinished lead flow remains sticky across turns, so a reply
+        like "John Smith" does not accidentally get routed to knowledge/RAG.
+        """
+        text = _latest_user_text(state)
 
-    if HANDOFF_RE.search(text):
-        return {"intent": "handoff"}
+        if HANDOFF_RE.search(text):
+            return {"intent": "handoff"}
 
-    if MEETING_RE.search(text):
-        return {"intent": "meeting"}
+        if MEETING_RE.search(text):
+            return {"intent": "meeting"}
 
-    if LEAD_RE.search(text):
-        return {"intent": "lead"}
+        flow_state = (
+            db.query(ConversationFlowState)
+            .filter(ConversationFlowState.conversation_id == conversation_id)
+            .first()
+        )
 
-    settings = get_settings()
+        if flow_state and flow_state.active_flow == "lead":
+            return {"intent": "lead"}
 
-    # Safe fallback when no model key is present: knowledge/RAG is least destructive.
-    if not settings.groq_api_key:
-        return {"intent": "knowledge"}
+        if LEAD_RE.search(text):
+            return {"intent": "lead"}
 
-    model = ChatGroq(
-        model=settings.groq_model,
-        api_key=settings.groq_api_key,
-        temperature=0,
-        timeout=30,
-        max_retries=1,
-    ).with_structured_output(IntentResult)
+        settings = get_settings()
 
-    result = model.invoke(
-        [
-            (
-                "system",
-                "Classify the visitor's latest Datamart chatbot message into exactly "
-                "one intent: knowledge, lead, meeting, or handoff. "
-                "Use lead for genuine project/service-buying enquiries. "
-                "Use meeting for scheduling calls/appointments. "
-                "Use handoff only for requests to speak with a human. "
-                "Use knowledge for Datamart questions and general conversation.",
-            ),
-            ("human", text),
-        ]
-    )
+        if not settings.groq_api_key:
+            return {"intent": "knowledge"}
 
-    return {"intent": result.intent}
+        model = ChatGroq(
+            model=settings.groq_model,
+            api_key=settings.groq_api_key,
+            temperature=0,
+            timeout=30,
+            max_retries=1,
+        ).with_structured_output(IntentResult)
+
+        result = model.invoke(
+            [
+                (
+                    "system",
+                    "Classify the visitor's latest Datamart chatbot message into exactly "
+                    "one intent: knowledge, lead, meeting, or handoff. "
+                    "Use lead for genuine project/service-buying enquiries. "
+                    "Use meeting for scheduling calls/appointments. "
+                    "Use handoff only for requests to speak with a human. "
+                    "Use knowledge for Datamart questions and general conversation.",
+                ),
+                ("human", text),
+            ]
+        )
+
+        return {"intent": result.intent}
+
+    return classify_intent
 
 
 def route_by_intent(state: ChatState) -> str:
