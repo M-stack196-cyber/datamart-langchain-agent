@@ -24,6 +24,14 @@ import "./live-chat.css";
 const API_URL =
   import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : "");
 
+const LEAD_STATUSES = [
+  "new",
+  "contacted",
+  "qualified",
+  "converted",
+  "lost",
+];
+
 
 export default function AdminDashboard() {
   const [leads, setLeads] = useState([]);
@@ -40,6 +48,7 @@ export default function AdminDashboard() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
   const [username, setUsername] = useState("");
+  const [updatingLeadId, setUpdatingLeadId] = useState(null);
 
 
   useEffect(() => {
@@ -146,6 +155,37 @@ export default function AdminDashboard() {
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+
+  async function updateLeadStatus(leadId, status) {
+    setUpdatingLeadId(leadId);
+
+    try {
+      const updatedLead = await protectedFetch(
+        `${API_URL}/api/leads/${leadId}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      setLeads((currentLeads) =>
+        currentLeads.map((lead) =>
+          lead.id === leadId
+            ? { ...lead, status: updatedLead.status }
+            : lead
+        )
+      );
+    } catch (error) {
+      if (error.message !== "Session expired.") {
+        window.alert(
+          error.message || "Unable to update lead status."
+        );
+      }
+    } finally {
+      setUpdatingLeadId(null);
     }
   }
 
@@ -339,7 +379,11 @@ export default function AdminDashboard() {
           )}
 
           {!error && !loading && activeTab === "leads" && (
-            <LeadTable leads={leads} />
+            <LeadTable
+              leads={leads}
+              updateLeadStatus={updateLeadStatus}
+              updatingLeadId={updatingLeadId}
+            />
           )}
 
           {!error && !loading && activeTab === "meetings" && (
@@ -486,7 +530,11 @@ function LiveChatPanel({
 }
 
 
-function LeadTable({ leads }) {
+function LeadTable({
+  leads,
+  updateLeadStatus,
+  updatingLeadId,
+}) {
   if (!leads.length) return <EmptyState message="No leads have been captured yet." />;
 
   return (
@@ -510,7 +558,23 @@ function LeadTable({ leads }) {
               <td>{lead.project_description || "—"}</td>
               <td><div className="primary-cell"><DollarSign size={15} />{lead.budget || "—"}</div></td>
               <td><div className="primary-cell"><Clock size={15} />{lead.timeline || "—"}</div></td>
-              <td><StatusBadge status={lead.status} /></td>
+              <td>
+                <select
+                  className="lead-status-select"
+                  value={lead.status || "new"}
+                  disabled={updatingLeadId === lead.id}
+                  onChange={(event) =>
+                    updateLeadStatus(lead.id, event.target.value)
+                  }
+                  aria-label={`Status for ${lead.name || "lead"}`}
+                >
+                  {LEAD_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </td>
             </tr>
           ))}
         </tbody>

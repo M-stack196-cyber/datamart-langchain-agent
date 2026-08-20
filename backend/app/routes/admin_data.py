@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Literal
 
 from app.auth import require_admin
 from app.db.models import HandoffRequest, Lead, MeetingRequest
@@ -38,6 +40,45 @@ def list_leads(
         }
         for row in rows
     ]
+
+
+class LeadStatusUpdate(BaseModel):
+    status: Literal[
+        "new",
+        "contacted",
+        "qualified",
+        "converted",
+        "lost",
+    ]
+
+
+@router.patch("/leads/{lead_id}/status")
+def update_lead_status(
+    lead_id: int,
+    payload: LeadStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    lead = (
+        db.query(Lead)
+        .filter(Lead.id == lead_id)
+        .first()
+    )
+
+    if not lead:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead not found",
+        )
+
+    lead.status = payload.status
+    db.commit()
+    db.refresh(lead)
+
+    return {
+        "id": lead.id,
+        "status": lead.status,
+        "message": "Lead status updated successfully.",
+    }
 
 
 @router.get("/meetings")

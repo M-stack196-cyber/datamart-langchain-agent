@@ -213,6 +213,34 @@
   color: #a64d2b;
 }
 
+.lead-status-select {
+  min-width: 118px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid #d9e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+  outline: none;
+}
+
+.lead-status-select:hover {
+  border-color: #b7c2d0;
+}
+
+.lead-status-select:focus {
+  border-color: #6b7cff;
+  box-shadow: 0 0 0 3px rgba(107, 124, 255, 0.12);
+}
+
+.lead-status-select:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .admin-state {
   min-height: 320px;
   display: flex;
